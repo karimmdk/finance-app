@@ -1,0 +1,45 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Find the Gradle project and copy the backend into it
+        id: loc
+        run: |
+          if [ -f android/settings.gradle.kts ]; then DIR=android
+          elif [ -f settings.gradle.kts ]; then DIR=.
+          else echo "::error::settings.gradle.kts not found"; exit 1; fi
+          if [ -f android/sync_backend.py ]; then python android/sync_backend.py; fi
+          for f in app/src/main/python/app/main.py app/src/main/python/android_main.py app/src/main/assets/payload/static/index.html app/src/main/assets/payload/migrations; do
+            [ -e "$DIR/$f" ] || { echo "::error::missing $DIR/$f"; exit 1; }
+          done
+          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Build debug APK
+        working-directory: ${{ steps.loc.outputs.dir }}
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: finance-app-apk
+          path: ${{ steps.loc.outputs.dir }}/app/build/outputs/apk/debug/*.apk
