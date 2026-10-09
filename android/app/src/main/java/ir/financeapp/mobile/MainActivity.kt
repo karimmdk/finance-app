@@ -12,15 +12,14 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Base64
-import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
-import android.view.WindowInsetsController
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.MimeTypeMap
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.URLUtil
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -76,8 +75,6 @@ class MainActivity : AppCompatActivity() {
         @Volatile private var starting = false
         private const val PREFS = "finance_prefs"
         private const val PREF_DB_DIR = "db_dir"
-        private const val TAG = "FinanceApp"
-        @Volatile private var crashHandlerInstalled = false
         private const val HOOK_JS = """
             (function(){
               if (window.__faHooked) return; window.__faHooked = true;
@@ -93,23 +90,19 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        installCrashHandler()
-        logLife("onCreate")
-        showPreviousCrashIfAny()
 
         val root = FrameLayout(this)
         root.setBackgroundColor(Color.parseColor("#F9FAFB"))
         // اندروید ۱۵ به بعد محتوا را زیر نوار وضعیت می‌کشد؛ پس خودمان حاشیه (نوار وضعیت/برش/صفحه‌کلید) را می‌دهیم
         root.setOnApplyWindowInsetsListener { v, insets ->
-            val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
-            val ime = insets.getInsets(WindowInsets.Type.ime())
-            v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
+            try {
+                val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+                val ime = insets.getInsets(WindowInsets.Type.ime())
+                v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
+            } catch (_: Throwable) {
+            }
             WindowInsets.CONSUMED
         }
-        window.insetsController?.setSystemBarsAppearance(
-            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
-            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-        )
         webView = WebView(this).apply {
             visibility = View.INVISIBLE
             layoutParams = ViewGroup.LayoutParams(
@@ -148,6 +141,16 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView, url: String?) {
                 view.evaluateJavascript(HOOK_JS, null)
+            }
+
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                // بدون این، مرگ پردازش رندر WebView کل برنامه را می‌بندد؛ به‌جایش صفحه از نو ساخته می‌شود
+                runOnUiThread {
+                    (view.parent as? ViewGroup)?.removeView(view)
+                    view.destroy()
+                    recreate()
+                }
+                return true
             }
 
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -199,47 +202,21 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
+        showPreviousCrash()
+        bootstrap()
+    }
+
+    private fun showPreviousCrash() {
         try {
-            bootstrap()
-        } catch (e: Throwable) {
-            Log.e(TAG, "bootstrap failed", e)
-            statusView.text = getString(R.string.start_failed, e.stackTraceToString().take(1500))
-        }
-    }
-
-    // ------------------------------------------------------ crash / lifecycle log
-
-    private fun crashFile() = File(filesDir, "last_crash.txt")
-
-    /** اگر برنامه کرش کرده باشد، متن خطا را ذخیره می‌کنیم تا دفعه بعد نشان داده شود (بدون logcat). */
-    private fun installCrashHandler() {
-        if (crashHandlerInstalled) return
-        crashHandlerInstalled = true
-        val previous = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { t, e ->
-            try {
-                crashFile().writeText("thread=${t.name}\n${e.stackTraceToString()}")
-            } catch (_: Throwable) {
-            }
-            previous?.uncaughtException(t, e)
-        }
-    }
-
-    private fun showPreviousCrashIfAny() {
-        val f = crashFile()
-        if (!f.exists()) return
-        val text = try { f.readText() } catch (_: Throwable) { "" }
-        f.delete()
-        AlertDialog.Builder(this)
-            .setTitle(R.string.previous_crash_title)
-            .setMessage(text.take(3000))
-            .setPositiveButton(R.string.ok, null)
-            .show()
-    }
-
-    private fun logLife(event: String) {
-        try {
-            File(filesDir, "lifecycle.log").appendText("${System.currentTimeMillis()} $event\n")
+            val f = File(filesDir, "last_crash.txt")
+            if (!f.exists()) return
+            val text = f.readText()
+            f.delete()
+            AlertDialog.Builder(this)
+                .setTitle(R.string.crash_title)
+                .setMessage(text.take(3500))
+                .setPositiveButton(R.string.close, null)
+                .show()
         } catch (_: Throwable) {
         }
     }
@@ -308,14 +285,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
-        logLife("onStop")
         flushDb()
         super.onStop()
     }
 
     override fun onStart() {
         super.onStart()
-        logLife("onStart port=$port")
         // اگر در پس‌زمینه ابزار سینک فایل را عوض کرده، با فایل جدید دوباره شروع کن
         val before = dbSignature
         if (port != 0 && before != null && signature() != before) restartApp()
@@ -552,7 +527,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        logLife("onDestroy finishing=$isFinishing")
         fileCallback?.onReceiveValue(null)
         fileCallback = null
         if (isFinishing && port != 0) {

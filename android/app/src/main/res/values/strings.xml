@@ -20,6 +20,6 @@
     <string name="db_dir_msg">پوشه فعلی:\n%s\n\nمسیر کامل پوشه جدید را وارد کنید. اگر آنجا finance.db وجود نداشته باشد، دیتابیس فعلی به آنجا کپی نمی‌شود و دیتابیس تازه ساخته می‌شود؛ در صورت نیاز فایل را دستی منتقل کنید.</string>
     <string name="save_and_restart">ذخیره و راه‌اندازی مجدد</string>
     <string name="fallback_private">پوشه انتخابی قابل استفاده نبود؛ موقتاً حافظه خصوصی برنامه استفاده شد (بدون سینک):\n%s</string>
-    <string name="previous_crash_title">خطای اجرای قبلی</string>
-    <string name="ok">باشه</string>
+    <string name="crash_title">برنامه دفعه قبل با خطا بسته شد (لطفاً از این پنجره اسکرین‌شات بگیرید)</string>
+    <string name="close">بستن</string>
 </resources>
