@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.FinanceApp" parent="Theme.AppCompat.DayNight.DarkActionBar">
+        <item name="colorPrimary">#0F766E</item>
+        <item name="colorPrimaryDark">#0B5A54</item>
+        <item name="colorAccent">#0F766E</item>
+    </style>
+</resources>
