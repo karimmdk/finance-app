@@ -13,10 +13,10 @@ import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Base64
 import android.view.Gravity
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.MimeTypeMap
@@ -92,6 +92,18 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         val root = FrameLayout(this)
+        root.setBackgroundColor(Color.parseColor("#F9FAFB"))
+        // اندروید ۱۵ به بعد محتوا را زیر نوار وضعیت می‌کشد؛ پس خودمان حاشیه (نوار وضعیت/برش/صفحه‌کلید) را می‌دهیم
+        root.setOnApplyWindowInsetsListener { v, insets ->
+            val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+            val ime = insets.getInsets(WindowInsets.Type.ime())
+            v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
+            WindowInsets.CONSUMED
+        }
+        window.insetsController?.setSystemBarsAppearance(
+            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
+            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+        )
         webView = WebView(this).apply {
             visibility = View.INVISIBLE
             layoutParams = ViewGroup.LayoutParams(
@@ -168,11 +180,15 @@ class MainActivity : AppCompatActivity() {
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (webView.canGoBack()) {
-                    webView.goBack()
-                } else {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
+                // اول کشوی منو را ببند / از هر صفحه به داشبورد برگرد؛ فقط از داشبورد خارج شو
+                webView.evaluateJavascript("window.faBack ? window.faBack() : false") { result ->
+                    if (result == "true") return@evaluateJavascript
+                    if (webView.canGoBack()) {
+                        webView.goBack()
+                    } else {
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
+                    }
                 }
             }
         })
@@ -384,6 +400,11 @@ class MainActivity : AppCompatActivity() {
 
     private inner class Bridge {
         @JavascriptInterface
+        fun showMenu() {
+            runOnUiThread { showAppMenu() }
+        }
+
+        @JavascriptInterface
         fun saveBlob(fileName: String, mime: String, dataUrl: String) {
             val bytes = Base64.decode(dataUrl.substringAfter("base64,"), Base64.DEFAULT)
             val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: "bin"
@@ -394,20 +415,23 @@ class MainActivity : AppCompatActivity() {
 
     // --------------------------------------------------------------- restore
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menu.add(0, 1, 0, R.string.menu_reload)
-        menu.add(0, 2, 1, R.string.menu_restore)
-        menu.add(0, 3, 2, R.string.menu_db_dir)
-        menu.add(0, 4, 3, R.string.menu_quit)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
-        1 -> { webView.reload(); true }
-        2 -> { pickBackup.launch(arrayOf("*/*")); true }
-        3 -> { changeDbDir(); true }
-        4 -> { quitCompletely(); true }
-        else -> super.onOptionsItemSelected(item)
+    private fun showAppMenu() {
+        val items = arrayOf(
+            getString(R.string.menu_reload),
+            getString(R.string.menu_restore),
+            getString(R.string.menu_db_dir),
+            getString(R.string.menu_quit)
+        )
+        AlertDialog.Builder(this)
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> webView.reload()
+                    1 -> pickBackup.launch(arrayOf("*/*"))
+                    2 -> changeDbDir()
+                    3 -> quitCompletely()
+                }
+            }
+            .show()
     }
 
     private fun confirmRestore(uri: Uri) {

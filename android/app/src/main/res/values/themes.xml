@@ -1,7 +1,12 @@
 <resources>
-    <style name="Theme.FinanceApp" parent="Theme.AppCompat.DayNight.DarkActionBar">
+    <style name="Theme.FinanceApp" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="colorPrimary">#0F766E</item>
         <item name="colorPrimaryDark">#0B5A54</item>
         <item name="colorAccent">#0F766E</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:statusBarColor">#F9FAFB</item>
+        <item name="android:navigationBarColor">#F9FAFB</item>
+        <item name="android:forceDarkAllowed">false</item>
     </style>
 </resources>
