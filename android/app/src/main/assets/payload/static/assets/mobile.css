@@ -1,0 +1,122 @@
+/*
+ * اصلاحات نمایش برای گوشی — فقط در نسخه اندروید بارگذاری می‌شود (android/sync_backend.py).
+ * نسخه دسکتاپ (static/) هیچ تغییری نمی‌کند.
+ */
+#fa-topbar,
+#fa-scrim { display: none; }
+
+@media (max-width: 899px), (max-height: 500px) {
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;            /* فقط <main> اسکرول می‌شود */
+    overscroll-behavior: none;
+  }
+  body { display: flex; flex-direction: column; background: #f9fafb; }
+  #root { flex: 1 1 auto; min-height: 0; }
+  #root > div { height: 100% !important; }   /* به‌جای h-screen (=100vh) */
+
+  /* ---- نوار بالا: ثابت و بیرون از ناحیه اسکرول؛ پس هرگز روی محتوا نمی‌افتد ---- */
+  #fa-topbar {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 4px;
+    height: 48px;
+    padding: 0 4px;
+    direction: rtl;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    color: #111827;
+    box-sizing: border-box;
+  }
+  #fa-topbar button {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #fa-topbar button:active { background: #eef2ff; }
+  #fa-topbar svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+  #fa-topbar svg .dot { fill: currentColor; stroke: none; }
+  #fa-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ---- سایدبار → کشوی کناری (در حالت RTL از راست باز می‌شود) ---- */
+  #root aside {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: min(84vw, 20rem);
+    z-index: 70;
+    transform: translateX(105%);
+    visibility: hidden;
+    transition: transform .22s ease, visibility 0s linear .22s;
+  }
+  html.fa-nav-open #root aside {
+    transform: none;
+    visibility: visible;
+    transition: transform .22s ease;
+    box-shadow: -8px 0 24px rgba(0, 0, 0, .18);
+  }
+  #root aside nav button { min-height: 44px; font-size: .95rem; }
+
+  #fa-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgba(17, 24, 39, .38);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .22s ease;
+  }
+  html.fa-nav-open #fa-scrim { opacity: 1; pointer-events: auto; }
+
+  /* ---- محتوای اصلی: کل عرض، حاشیه کم ---- */
+  #root main {
+    min-width: 0;
+    padding: 12px !important;
+    padding-bottom: 24px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* عنوان صفحه در نوار بالا هست؛ تکرارش در محتوا فقط جا می‌گیرد */
+  #root main h1 { display: none; }
+  #root main .flex.justify-between.items-center.mb-4 {
+    flex-wrap: wrap;
+    gap: .5rem;
+    justify-content: flex-start;
+  }
+  #root main .flex.gap-2 { flex-wrap: wrap; }
+  #root main button { white-space: nowrap; }
+
+  /* ---- جدول‌ها: بدون اسکرول تو‌در‌توی عمودی و بدون سربرگ چسبان ---- */
+  #root .sticky { position: static !important; }
+  #root .max-h-\[70vh\],
+  #root .max-h-96 { max-height: none !important; }
+  #root .max-h-\[90vh\] { max-height: 90dvh !important; }
+
+  /* ---- هدف‌های لمسی راحت‌تر ---- */
+  #root main button.rounded-lg { min-height: 40px; }
+  #root main select,
+  #root main textarea,
+  #root main input:not([type=checkbox]):not([type=radio]):not([type=file]) {
+    min-height: 40px;
+    font-size: 16px;             /* جلوگیری از بزرگ‌نمایی خودکار هنگام فوکوس */
+  }
+}

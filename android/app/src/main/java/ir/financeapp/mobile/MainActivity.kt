@@ -12,6 +12,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Base64
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -75,6 +76,8 @@ class MainActivity : AppCompatActivity() {
         @Volatile private var starting = false
         private const val PREFS = "finance_prefs"
         private const val PREF_DB_DIR = "db_dir"
+        private const val TAG = "FinanceApp"
+        @Volatile private var crashHandlerInstalled = false
         private const val HOOK_JS = """
             (function(){
               if (window.__faHooked) return; window.__faHooked = true;
@@ -90,6 +93,9 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        installCrashHandler()
+        logLife("onCreate")
+        showPreviousCrashIfAny()
 
         val root = FrameLayout(this)
         root.setBackgroundColor(Color.parseColor("#F9FAFB"))
@@ -193,7 +199,49 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        bootstrap()
+        try {
+            bootstrap()
+        } catch (e: Throwable) {
+            Log.e(TAG, "bootstrap failed", e)
+            statusView.text = getString(R.string.start_failed, e.stackTraceToString().take(1500))
+        }
+    }
+
+    // ------------------------------------------------------ crash / lifecycle log
+
+    private fun crashFile() = File(filesDir, "last_crash.txt")
+
+    /** اگر برنامه کرش کرده باشد، متن خطا را ذخیره می‌کنیم تا دفعه بعد نشان داده شود (بدون logcat). */
+    private fun installCrashHandler() {
+        if (crashHandlerInstalled) return
+        crashHandlerInstalled = true
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            try {
+                crashFile().writeText("thread=${t.name}\n${e.stackTraceToString()}")
+            } catch (_: Throwable) {
+            }
+            previous?.uncaughtException(t, e)
+        }
+    }
+
+    private fun showPreviousCrashIfAny() {
+        val f = crashFile()
+        if (!f.exists()) return
+        val text = try { f.readText() } catch (_: Throwable) { "" }
+        f.delete()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.previous_crash_title)
+            .setMessage(text.take(3000))
+            .setPositiveButton(R.string.ok, null)
+            .show()
+    }
+
+    private fun logLife(event: String) {
+        try {
+            File(filesDir, "lifecycle.log").appendText("${System.currentTimeMillis()} $event\n")
+        } catch (_: Throwable) {
+        }
     }
 
     // ------------------------------------------------------ storage / bootstrap
@@ -260,12 +308,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        logLife("onStop")
         flushDb()
         super.onStop()
     }
 
     override fun onStart() {
         super.onStart()
+        logLife("onStart port=$port")
         // اگر در پس‌زمینه ابزار سینک فایل را عوض کرده، با فایل جدید دوباره شروع کن
         val before = dbSignature
         if (port != 0 && before != null && signature() != before) restartApp()
@@ -502,6 +552,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        logLife("onDestroy finishing=$isFinishing")
         fileCallback?.onReceiveValue(null)
         fileCallback = null
         if (isFinishing && port != 0) {
