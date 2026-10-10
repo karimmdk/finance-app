@@ -11,6 +11,7 @@
 
   // برای دکمه Back اندروید (Kotlin صدا می‌زند): true یعنی خودم مصرفش کردم
   window.faBack = function () {
+    if (window.faCloseSheet && window.faCloseSheet()) return true;   // پنجره‌های ویرایش/حذف
     if (isOpen()) { setOpen(false); return true; }
     var btns = document.querySelectorAll('aside nav button');
     if (btns.length && String(btns[0].className).indexOf('bg-indigo-50') === -1) {
@@ -68,6 +69,35 @@
     });
     syncTitle();
   }
+
+  // کشیدن لبه‌ی سربرگ ستون برای تغییر عرض: اپ فقط رویداد ماوس را می‌فهمد؛ لمس را به همان تبدیل می‌کنیم.
+  // نکته: اپ بعد از هر تغییر عرض، دستگیره‌ها را از نو می‌سازد و عنصری که انگشت رویش است از DOM حذف می‌شود؛
+  // رویدادهای لمسی همیشه به همان عنصرِ شروع می‌روند، پس شنونده‌ها را مستقیم روی خود آن عنصر می‌گذاریم.
+  (function resizeByTouch() {
+    function fire(type, pt, target) {
+      target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: pt.clientX, clientY: pt.clientY }));
+    }
+    document.addEventListener('touchstart', function (e) {
+      var handle = e.target.closest && e.target.closest('.cursor-col-resize');
+      if (!handle || !e.touches.length) return;
+      e.preventDefault();
+      fire('mousedown', e.touches[0], handle);
+      function move(ev) {
+        ev.preventDefault();
+        if (ev.touches.length) fire('mousemove', ev.touches[0], window);
+      }
+      function end(ev) {
+        handle.removeEventListener('touchmove', move);
+        handle.removeEventListener('touchend', end);
+        handle.removeEventListener('touchcancel', end);
+        var pt = (ev.changedTouches && ev.changedTouches[0]) || { clientX: 0, clientY: 0 };
+        fire('mouseup', pt, window);
+      }
+      handle.addEventListener('touchmove', move, { passive: false });
+      handle.addEventListener('touchend', end);
+      handle.addEventListener('touchcancel', end);
+    }, { passive: false });
+  })();
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build);
   else build();

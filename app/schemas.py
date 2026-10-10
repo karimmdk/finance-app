@@ -23,6 +23,11 @@ class AccountUpdate(BaseModel):
     name: Optional[str] = None
     type: Optional[Literal["bank", "cash", "wallet", "other"]] = None
     bankName: Optional[str] = None
+    accountNumber: Optional[str] = None
+    cardNumber: Optional[str] = None
+    iban: Optional[str] = None
+    initialBalance: Optional[int] = None
+    currency: Optional[Literal["IRR", "IRT"]] = None
     notes: Optional[str] = None
     active: Optional[bool] = None
 

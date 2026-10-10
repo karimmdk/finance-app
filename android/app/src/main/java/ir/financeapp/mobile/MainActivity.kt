@@ -18,6 +18,7 @@ import android.view.ViewGroup
 import android.view.WindowInsets
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
+import android.webkit.JsResult
 import android.webkit.MimeTypeMap
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.URLUtil
@@ -165,6 +166,27 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webChromeClient = object : WebChromeClient() {
+            // اپ برای تأیید حذف و نمایش خطا از confirm()/alert() استفاده می‌کند؛ بدون این دو، WebView همیشه
+            // «انصراف» برمی‌گرداند (حذف هیچ‌وقت انجام نمی‌شد) و پیام‌ها دیده نمی‌شدند.
+            override fun onJsAlert(view: WebView, url: String?, message: String?, result: JsResult): Boolean {
+                AlertDialog.Builder(this@MainActivity)
+                    .setMessage(message ?: "")
+                    .setPositiveButton(R.string.ok) { _, _ -> result.confirm() }
+                    .setOnCancelListener { result.cancel() }
+                    .show()
+                return true
+            }
+
+            override fun onJsConfirm(view: WebView, url: String?, message: String?, result: JsResult): Boolean {
+                AlertDialog.Builder(this@MainActivity)
+                    .setMessage(message ?: "")
+                    .setPositiveButton(R.string.ok) { _, _ -> result.confirm() }
+                    .setNegativeButton(R.string.cancel) { _, _ -> result.cancel() }
+                    .setOnCancelListener { result.cancel() }
+                    .show()
+                return true
+            }
+
             override fun onShowFileChooser(
                 view: WebView,
                 callback: ValueCallback<Array<Uri>>,

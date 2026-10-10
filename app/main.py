@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.requests import Request
 
-from app.routes import accounts, transactions, transfers, debts, loans, rules, dashboard, budgets, backup, ai, saved_filters
+from app.routes import accounts, transactions, transfers, debts, loans, rules, dashboard, budgets, backup, ai, saved_filters, manage
 from app.routes.people_categories_tags import people_router, categories_router, tags_router
 from app.routes.customers_sales import customers_router, sales_router
 
@@ -51,6 +51,7 @@ def create_app(db: sqlite3.Connection, static_dir: str | None = None, db_path: s
     app.include_router(budgets.router, prefix="/api/budgets")
     app.include_router(backup.router, prefix="/api/backup")
     app.include_router(ai.router, prefix="/api/ai")
+    app.include_router(manage.router, prefix="/api")
     app.include_router(saved_filters.router, prefix="/api/saved-filters")
 
     @app.get("/api/health")

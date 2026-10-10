@@ -43,12 +43,17 @@ def update_account(account_id: int, body: AccountUpdate, db: sqlite3.Connection 
     if not existing:
         raise HTTPException(404, "حساب یافت نشد")
     merged = dict(existing)
+    col_map = {"bankName": "bank_name", "accountNumber": "account_number", "cardNumber": "card_number",
+               "initialBalance": "initial_balance"}
     for field, value in body.model_dump(exclude_unset=True).items():
-        col = {"bankName": "bank_name"}.get(field, field)
-        merged[col] = value
+        merged[col_map.get(field, field)] = value
+    if not merged["name"]:
+        raise HTTPException(400, "نام حساب الزامی است")
     db.execute(
-        "UPDATE accounts SET name=?, type=?, bank_name=?, notes=?, active=?, updated_at=datetime('now') WHERE id=?",
-        (merged["name"], merged["type"], merged["bank_name"], merged["notes"], merged["active"], account_id),
+        "UPDATE accounts SET name=?, type=?, bank_name=?, account_number=?, card_number=?, iban=?, "
+        "initial_balance=?, currency=?, notes=?, active=?, updated_at=datetime('now') WHERE id=?",
+        (merged["name"], merged["type"], merged["bank_name"], merged["account_number"], merged["card_number"],
+         merged["iban"], merged["initial_balance"], merged["currency"], merged["notes"], merged["active"], account_id),
     )
     db.commit()
     return {"ok": True}

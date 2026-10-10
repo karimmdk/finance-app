@@ -12,8 +12,8 @@ android {
         applicationId = "ir.financeapp.mobile"
         minSdk = 30          // اندروید ۱۱ به بالا (برای دسترسی به پوشه‌های مشترک)
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.3"
+        versionCode = 5
+        versionName = "1.4"
         ndk {
             // arm64-v8a = همه گوشی‌های امروزی؛ x86_64 فقط برای شبیه‌ساز
             abiFilters += listOf("arm64-v8a", "x86_64")

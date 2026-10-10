@@ -22,4 +22,5 @@
     <string name="fallback_private">پوشه انتخابی قابل استفاده نبود؛ موقتاً حافظه خصوصی برنامه استفاده شد (بدون سینک):\n%s</string>
     <string name="crash_title">برنامه دفعه قبل با خطا بسته شد (لطفاً از این پنجره اسکرین‌شات بگیرید)</string>
     <string name="close">بستن</string>
+    <string name="ok">تأیید</string>
 </resources>
